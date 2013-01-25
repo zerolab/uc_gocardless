@@ -1,201 +1,265 @@
 <?php
 
-// Include library
-include_once 'lib/GoCardless.php';
 
-// Sandbox
-GoCardless::$environment = 'sandbox';
+/**
+ * Implements hook_menu()
+ */
+function uc_gocardless_menu() {
+
+ // Callback functions
  
-function uc_gocardless_payment_gateway() {
-  $gateways['uc_gocardless'] = array(
-    'title' => t('GoCardless'),
-    'description' => t('Process payments through GoCardless'),
+ //Redirect
+  $items['gocardless/redirect'] = array(
+    'title' => 'GoCardless redirect',
+    'page callback' => 'uc_gocardless_redirect',
+    'page arguments' => array(3),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_gocardless.pages.inc',
   );
-  return $gateways;
+  $items['gocardless/cancel'] = array(
+    'title' => 'GoCardless payment cancelled',
+    'page callback' => 'uc_gocardless_cancel',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_gocardless.pages.inc',
+  );
+  $items['gocardless/webhook'] = array(
+    'title' => 'GoCardless webhooks',
+    'page callback' => 'uc_gocardless_webhook',
+    'access callback' => 'uc_gocardless_webhook_access',
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_gocardless.pages.inc',
+  );
+
+  return $items;
+
+
+}
+/*
+ * Access callback. Makes sure PayPal always has access to send IPNs.
+ */
+function uc_gocardless_webhook_access() {
+  return TRUE;
 }
 
+/**
+ * Implements hook_form_alter().
+ *
+ * Notice how we alter the checkout review form to post the order to GoCardless.
+ */
+
+
+
+function uc_gocardless_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'uc_cart_checkout_review_form' && ($order_id = intval($_SESSION['cart_order'])) > 0) {
+    $order = uc_order_load($order_id);
+
+    if ($order->payment_method == 'uc_gocardless') {
+      unset($form['submit']);
+      $form['#prefix'] = '<table style="display: inline; padding-top: 1em;"><tr><td>';
+      $form['#suffix'] = '</td><td>'. drupal_get_form('uc_gocardless_form', $order) .'</td></tr></table>';
+    }
+  }
+
+}
+
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+ 
+ 
+/**
+ * Implements hook_payment_method().
+ */
+ 
 function uc_gocardless_payment_method() {
   $methods[] = array(
     'id' => 'uc_gocardless',
     'name' => t('GoCardless'),
     'title' => t('GoCardless'),
     'desc' => t('Pay via GoCardless'),
-    'callback' => 'my_payment_method',
-    'redirect' => 'my_payment_form',
+    'callback' => 'uc_payment_method_gocardless',
     'weight' => 1,
-    'checkout' => TRUE,
+    'checkout' => FALSE,
+    'no_gateway' => TRUE,
   );
-  return $methods;
+	return $methods;
+  
+
 }
 
-function my_payment_method($op, &$order) {
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_payment_method_gocardless($op, &$order) {
   switch ($op) {
     case 'settings':
+     	$form['uc_stripe_settings']['uc_gocardless_sandbox'] = array(
+    		'#type' => 'checkbox',
+    		'#title' => t('Enable Sandbox'),
+    		'#description' => 'Sandbox: GoCardless will use the sandbox API keys to process the transaction.',
+    		'#default_value' => variable_get('uc_gocardless_sandbox', TRUE),
+  		);
+  		
+		$form['live_details'] = array (
+			'#value' => variable_get('live_details', t('<strong>Live API keys</strong>')),
+		);
+		
       $form['uc_gocardless_app_id'] = array(
         '#type' => 'textfield',
         '#title' => t('App identifier'),
         '#description' => t('Your app identifier'),
-        '#default_value' => variable_get('uc_gocardless_app_id', NULL),
+        '#default_value' => variable_get('uc_gocardless_app_id', ''),
       );
-      $form['uc_gocardless_app_secret'] = array(
+       $form['uc_gocardless_app_secret'] = array(
         '#type' => 'textfield',
         '#title' => t('App secret'),
         '#description' => t('Your app secret'),
-        '#default_value' => variable_get('uc_gocardless_app_secret', NULL),
+        '#default_value' => variable_get('uc_gocardless_app_secret', ''),
       );
       $form['uc_gocardless_merchant_token'] = array(
         '#type' => 'textfield',
         '#title' => t('Merchant access token'),
         '#description' => t('Your merchant access token'),
-        '#default_value' => variable_get('uc_gocardless_merchant_token', NULL),
+        '#default_value' => variable_get('uc_gocardless_merchant_token', ''),
       );
       $form['uc_gocardless_merchant_id'] = array(
         '#type' => 'textfield',
         '#title' => t('Merchant ID'),
         '#description' => t('Your merchant ID'),
-        '#default_value' => variable_get('uc_gocardless_merchant_id', NULL),
+        '#default_value' => variable_get('uc_gocardless_merchant_id', ''),
+      );
+      
+		$form['sandbox_details'] = array (
+			'#value' => variable_get('sandbox_details', t('<strong>Sandbox API keys</strong>')),
+		);
+		
+      $form['uc_gocardless_sandbox_app_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Sandbox app identifier'),
+        '#description' => t('Your sandbox app identifier'),
+        '#default_value' => variable_get('uc_gocardless_sandbox_app_id', ''),
+      );
+       $form['uc_gocardless_sandbox_app_secret'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Sandbox app secret'),
+        '#description' => t('Your sandbox app secret'),
+        '#default_value' => variable_get('uc_gocardless_sandbox_app_secret', ''),
+      );
+      $form['uc_gocardless_sandbox_merchant_token'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Sandbox merchant access token'),
+        '#description' => t('Your sandbox merchant access token'),
+        '#default_value' => variable_get('uc_gocardless_sandbox_merchant_token', ''),
       );
       $form['my_custom_checkout_label'] = array(
         '#type' => 'textfield',
         '#title' => t('Checkout button label'),
         '#description' => t('Customize the label of the final checkout button when the customer is about to pay.'),
-        '#default_value' => variable_get('my_custom_checkout_label', NULL),
+        '#default_value' => variable_get('my_custom_checkout_label', ''),
         );
       return $form;
   }
 }
-/*
-// Config vars
-$account_details = array(
-  'app_id'        => variable_get('uc_gocardless_app_id', NULL),
-  'app_secret'    => variable_get('uc_gocardless_app_secret', NULL),
-  'merchant_id'   => variable_get('uc_gocardless_merchant_id', NULL),
-  'access_token'  => variable_get('uc_gocardless_merchant_token', NULL)
-);
-*/
 
-$account_details = array(
-  'app_id'        => 'BWFEH8XEVJ75K11AB80PMRB8XVBX7TZ7733TM27Y5HADT93QZYKRHQG21Z8DP1YF',
-  'app_secret'    => '3XJEV1EXD80ZKA0JBZ44MEMX2PA7PVPQ0ZBS8SMKVX8XF9VHSM72573HJ29F6VYF',
-  'merchant_id'   => 'DMMPJDKAWENXC23FHWDQMDEVN8C15REYXWBQ5BJN0FZWRY059Z2P3Z96ZTS5ZN61',
-  'access_token'  => '07XVY5PBKQ'
-);
-
-
-// Fail nicely if no account details set
-if ( ! $account_details['app_id'] && ! $account_details['app_secret']) {
-  echo '<p>First sign up to <a href="http://gocardless.com">GoCardless</a> and
-copy your sandbox API credentials from the \'Developer\' tab into the top of
-this script.</p>';
-  exit();
-}
-// Initialize GoCardless
-GoCardless::set_account_details($account_details);
-
-if (isset($_GET['resource_id']) && isset($_GET['resource_type'])) {
-  // Get vars found so let's try confirming payment
-
-  $confirm_params = array(
-    'resource_id'   => $_GET['resource_id'],
-    'resource_type' => $_GET['resource_type'],
-    'resource_uri'  => $_GET['resource_uri'],
-    'signature'     => $_GET['signature']
-  );
-
-  // State is optional
-  if (isset($_GET['state'])) {
-    $confirm_params['state'] = $_GET['state'];
-  }
-
-  $confirmed_resource = GoCardless::confirm_resource($confirm_params);
-
-}
-
-
-function my_payment_form($form, &$form_state, $order) {
-
-  global $user;
-  global $base_url;
- 
-  // Collect some information about the order
-  $time = time();
-  $order_id = $order->order_id;
-  $order_total = number_format($order->order_total, 2, '.', '');
-  $customer_email = $order->primary_email;
-  $cart_id = uc_cart_get_id();
- 
-  // Build the data to send to my payment gateway
-
-  $basket = _uc_gocardless_make_order_basket($order);
-  
-  $payment_details = array(
-  	'amount'  => number_format(check_plain($order->order_total, "number"), 2, '.', ''),
-  	'name'    => check_plain($basket),
-    'user'    => array(
-    	'first_name' => check_plain($order->billing_first_name),
-    	'last_name' => check_plain($order->billing_last_name), 
-    	'email'       => $order->primary_email,
-    	)
-	);
-
-
-$bill_url = GoCardless::new_bill_url($payment_details);
-  
- 
-  // This code goes behind the final checkout button of the checkout pane
-  foreach ($payment_details as $name => $value) {
-    if (!empty($value)) {
-      $form[$name] = array('#type' => 'hidden', '#value' => $value);
-    }
-  }
- 
-  $form['#action'] = $bill_url;
-  $form['actions'] = array('#type' => 'actions');
-  $form['actions']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => variable_get('my_custom_checkout_label', t('Submit order')),
-  );
-  return $form;
-}
 
 
 /**
- * Create a description of the user's shopping basket that is in the correct
- * format for submission to GoCardless
+ * Returns the  elements for the checkout review form.
  */
-function _uc_gocardless_make_order_basket($order) {
+function uc_gocardless_form($form_state, $order) {
 
-  $basket = '';
-  $break = ":";
-  $no_lines = 0;
-    
-  foreach ($order->products as $product) {    
-    $context = array(
-      'revision' => 'altered',
-      'type' => 'order_product',
-      'subject' => array(
-        'order' => $order,
-        'product' => $product,
-        'node' => node_load($product->nid),
-      ),
-    );
-    
-    $price_info = array(
-      'price' => $product->price,
-      'qty' => $product->qty,
-    );
-    
-    $price = uc_price($price_info, $context);
-    
-    $basket .= $break . str_replace(':', ' ', $product->title);
-    $basket .= $break . $product->qty;
-    $basket .= $break . number_format($price, 2, '.', '');
-    $basket .= $break . '---';
-    $basket .= $break . number_format($price, 2, '.', '');
-    $basket .= $break . number_format(($product->qty * $price), 2, '.', '');
-    $no_lines++;
-  }
+ 	if ($path = libraries_get_path('gocardless')) {
+ 
+    	// Load GoCardless Library.
+    	include_once $path . '/lib/GoCardless.php';
+  	}
+  		
+  	else {
+   		watchdog('uc_gocardless', 'GoCardless Library not found. Please download into sites/all/libraries/gocardless', array(), WATCHDOG_WARNING);
+    	return FALSE;
+		}
+		
+  	// Are we in Sandbox mode…
+  	$test=variable_get('uc_gocardless_sandbox', TRUE);
+  		if ($test) {
+
+  		GoCardless::$environment = 'sandbox';
+
+		$account_details = array(
+  			'app_id'        => variable_get('uc_gocardless_sandbox_app_id',''),
+  			'app_secret'    => variable_get('uc_gocardless_sandbox_app_secret',''),
+  			'merchant_id'   => variable_get('uc_gocardless_sandbox_merchant_id',''),
+  			'access_token'  => variable_get('uc_gocardless_merchant_token','')
+			);
+		} 
+		
+		else {
+		// Or live mode ?
+		$account_details = array(
+  			'app_id'        => variable_get('uc_gocardless_app_id',''),
+  			'app_secret'    => variable_get('uc_gocardless_app_secret',''),
+  			'merchant_id'   => variable_get('uc_gocardless_merchant_id',''),
+  			'access_token'  => variable_get('uc_gocardless_merchant_token','')
+			);
+		}
+ 
   
-  return $no_lines . $basket;
-  
+	if ( ! $account_details['app_id'] && ! $account_details['app_secret']) {
+		watchdog('uc_gocardless', 'First sign up to <a href="http://gocardless.com">GoCardless</a> and copy your  API credentials from the \'Developer\' tab into the GoCardless settings form.', array(), WATCHDOG_WARNING);
+    	return FALSE;
+	}
+	
+	// Initialize GoCardless
+	GoCardless::set_account_details($account_details);
+
+	if (isset($_GET['resource_id']) && isset($_GET['resource_type'])) {
+  		// Get vars found so let's try confirming payment
+
+  		$confirm_params = array(
+  	 	 	'resource_id'   => $_GET['resource_id'],
+ 		   	'resource_type' => $_GET['resource_type'],
+  		  	'resource_uri'  => $_GET['resource_uri'],
+   		 	'signature'     => $_GET['signature']
+ 	 	);
+
+ 		// State is optional
+ 		if (isset($_GET['state'])) {
+    		$confirm_params['state'] = $_GET['state'];
+  		}
+
+  		$confirmed_resource = GoCardless::confirm_resource($confirm_params);
+	}
+
+
+ 	$payment_details = array(
+  		'amount'	=> number_format(check_plain($order->order_total, "number"), 2, '.', ''),
+  		'name'    	=> check_plain($basket),
+    	'user'    	=> array(
+    		'first_name' 		=> check_plain($order->billing_first_name),
+    		'last_name' 		=> check_plain($order->billing_last_name), 
+    		'email'       		=> $order->primary_email,
+    		'billing_postcode' 	=> $order->billing_postal_code,
+    		),
+    	'state'		=>  uc_order_load($order_id),
+	);
+	
+	$url = GoCardless::new_bill_url($payment_details);
+
+	$form['gocardless_link'] = array (
+	'#value' => variable_get('gocardless_pay_link', t('<a href="'.$url.'" class="gocardless-submit">Submit order</a>')),
+	);
+ 
+ 
+
+  return $form;
+
 }
+
+
+
+
+ 
