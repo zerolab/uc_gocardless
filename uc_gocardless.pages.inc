@@ -14,8 +14,27 @@ function uc_gocardless_redirect($order_id, $cart_id) {
 		}
 
 	$confirmed_resource = GoCardless::confirm_resource($confirm_params);
+	
+	
 
+  if (intval($_SESSION['cart_order']) != $order->order_id) {
+    drupal_set_message(t('Thank you for your order! GoCardless will notify us once your payment has been processed.'));
+    drupal_goto('cart');
+  }
+
+  // Ensure the payment method is GoCardless.
+  if ($order->payment_method != 'uc_gocardless') {
+    drupal_goto('cart');
+  }
+
+  // This lets us know it's a legitimate access of the complete page.
+  $_SESSION['do_complete'] = TRUE;
+
+  drupal_goto('cart/checkout/complete');
 }
+
+
+
 
 
 function uc_gocardless_webhook() {
@@ -49,6 +68,7 @@ if ($webhook_valid == TRUE) {
   header('HTTP/1.1 403 Invalid signature');
 
 }
+
 
 
 }
