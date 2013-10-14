@@ -187,8 +187,8 @@ function uc_gocardless_form($form_state, $order) {
     $account_details = array(
       'app_id'        => variable_get('uc_gocardless_sandbox_app_id',''),
       'app_secret'    => variable_get('uc_gocardless_sandbox_app_secret',''),
-      'merchant_id'   => variable_get('uc_gocardless_sandbox_merchant_id',''),
-      'access_token'  => variable_get('uc_gocardless_merchant_token','')
+      'merchant_id'   => variable_get('uc_gocardless_merchant_id',''),
+      'access_token'  => variable_get('uc_gocardless_sandbox_merchant_token','')
     );
   }
   else {
