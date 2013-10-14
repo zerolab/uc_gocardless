@@ -191,7 +191,7 @@ function uc_gocardless_form($form_state, $order) {
       'email'       => $order->primary_email,
       'billing_postcode'  => $order->billing_postal_code,
     ),
-    'state' =>  uc_order_load($order_id),
+    'state' => $order->order_id,
   );
 
   $url = GoCardless::new_bill_url($payment_details);
