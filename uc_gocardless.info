@@ -1,7 +1,6 @@
 name = Ubercart GoCardless
 description = A payment gateway to process payments with GoCardless
 dependencies[] = uc_payment
-dependencies[] = libraries
 package = Ubercart - payment
 core = 6.x
 php = 5.2
