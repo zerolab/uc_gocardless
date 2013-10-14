@@ -9,6 +9,8 @@
  *  Redirect callback
  */
 function uc_gocardless_redirect($order_id, $cart_id) {
+  uc_gocardless_initialize_library();
+
   $confirm_params = array(
     'resource_id'    => $_GET['resource_id'],
     'resource_type'  => $_GET['resource_type'],
@@ -43,6 +45,7 @@ function uc_gocardless_redirect($order_id, $cart_id) {
  * Webhook callback
  */
 function uc_gocardless_webhook() {
+  uc_gocardless_initialize_library();
 
   $webhook = file_get_contents('php://input');
   $webhook_array = json_decode($webhook, true);
