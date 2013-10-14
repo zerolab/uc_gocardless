@@ -162,11 +162,18 @@ function uc_payment_method_gocardless($op, &$order) {
  * Returns the  elements for the checkout review form.
  */
 function uc_gocardless_form($form_state, $order) {
+  $file = '/lib/GoCardless.php';
 
-  if (function_exists('libraries_get_path')
-      && file_exists(libraries_get_path('gocardless') .'/lib/GoCardless.php')) {
-    // Load GoCardless Library.
-    include_once $path . '/lib/GoCardless.php';
+  if (function_exists('libraries_get_path')) {
+    $path = libraries_get_path('gocardless');
+  }
+  else {
+    $path = './' . drupal_get_path('module', 'uc_gocardless') . '/gocardless/';
+  }
+
+  if (file_exists($path . $file)) {
+    // Load the GoCardless library.
+    include_once $path . $file;
   }
   else {
     watchdog('uc_gocardless', 'GoCardless Library not found. Please download into sites/all/libraries/gocardless', array(), WATCHDOG_WARNING);
@@ -186,6 +193,8 @@ function uc_gocardless_form($form_state, $order) {
   }
   else {
     // Or live mode ?
+    GoCardless::$environment = 'production';
+
     $account_details = array(
       'app_id'        => variable_get('uc_gocardless_app_id',''),
       'app_secret'    => variable_get('uc_gocardless_app_secret',''),
