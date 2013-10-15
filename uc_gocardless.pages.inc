@@ -12,15 +12,15 @@ function uc_gocardless_complete($order) {
   uc_gocardless_initialize_library();
 
   $confirm_params = array(
-    'resource_id'    => $_GET['resource_id'],
-    'resource_type'  => $_GET['resource_type'],
-    'resource_uri'   => $_GET['resource_uri'],
-    'signature'      => $_GET['signature']
+    'resource_id'    => check_plain($_GET['resource_id']),
+    'resource_type'  => check_plain($_GET['resource_type']),
+    'resource_uri'   => check_plain($_GET['resource_uri']),
+    'signature'      => check_plain($_GET['signature'])
   );
 
   // State is optional
   if (isset($_GET['state'])) {
-    $confirm_params['state'] = $_GET['state'];
+    $confirm_params['state'] = check_plain($_GET['state']);
   }
 
   $confirmed_resource = GoCardless::confirm_resource($confirm_params);
@@ -37,6 +37,13 @@ function uc_gocardless_complete($order) {
 
   // This lets us know it's a legitimate access of the complete page.
   $_SESSION['do_complete'] = TRUE;
+
+  // Save the GoCardless record id <-> order id link
+  $record = new StdClass;
+  $record->order_id = $order->order_id;
+  $record->resource_id = $confirmed_resource->id;
+
+  drupal_write_record('uc_order_gocardless', $record);
 
   drupal_goto('cart/checkout/complete');
 }
