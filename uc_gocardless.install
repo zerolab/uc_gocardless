@@ -4,7 +4,7 @@
  * @file
  * uc_gocardless.install
  */
- 
+
 /**
  * Implementation of hook_requirements().
  *
@@ -12,9 +12,9 @@
  */
 function uc_gocardless_requirements($phase) {
   $t = get_t();
- 
+
   $has_curl = function_exists('curl_init');
- 
+
   $requirements['uc_gocardless_curl'] = array(
     'title' => $t('cURL'),
     'value' => $has_curl ? $t('Enabled') : $t('Not found'),
@@ -23,16 +23,54 @@ function uc_gocardless_requirements($phase) {
     $requirements['uc_gocardless_curl']['severity'] = REQUIREMENT_ERROR;
     $requirements['uc_gocardless_curl']['description'] = $t("Ubercart GoCardless Module requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php'));
   }
- 
+
   return $requirements;
 }
- 
+
+/**
+ * Implements hook_install()
+ */
+function uc_gocardless_install() {
+  drupal_install_schema('uc_order_gocardless');
+}
+
 /**
  * Implements hook_uninstall().
  *
  * Uninstalls all variables set by the uc_gocardless module.
  */
 function uc_gocardless_uninstall() {
+  drupal_uninstall_schema('uc_order_gocardless');
+
   // Delete related variables all at once.
   db_query("DELETE FROM {variable} WHERE name LIKE 'uc_gocardless_%%'");
+}
+
+/**
+ * Implements hook_schema()
+ */
+function uc_gocardless_schema() {
+  $schema = array();
+
+  $schema['uc_order_gocardless'] = array(
+    'description' => 'GoCardless order data',
+    'fields' => array(
+      'order_id' => array(
+        'description' => 'Primary key: the order ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'resource_id' => array(
+        'description' => 'GoCardless resource id',
+        'type'   => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''
+      )
+    ),
+    'primary_key' => array('order_id')
+  );
+
+  return $schema;
 }
