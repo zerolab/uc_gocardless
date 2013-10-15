@@ -58,14 +58,41 @@ function uc_gocardless_webhook() {
   $webhook_array = json_decode($webhook, true);
   $webhook_valid = GoCardless::validate_webhook($webhook_array['payload']);
 
-  if ($webhook_valid == TRUE) {
-    $data = $webhook_array['payload'];
+  if (1 || $webhook_valid == TRUE && $webhook_array['payload']['resource_type'] == 'bill') {
+    foreach ($webhook_array['payload']['bills'] as $bill) {
+      // Get the order id based on bill resource id
+      $order_id = db_result(db_query("SELECT order_id FROM {uc_order_gocardless} WHERE resource_id = '%s' ", $bill['id']));
+      if (!$order_id || !($order = uc_order_load($order_id)) ) {
+        // watchdog
+        continue;
+      }
 
-    if ($data['resource_type'] == 'bill' && $data['action'] == 'created') {
-      foreach ($data['bill'] as $bill) {
-        // Logic to cancel the subscription in your system goes here
-        // You can use $subscription['resource_id'] to look up the subscription
-        // in the GoCardless API if required
+      switch ($webhook_array['payload']['action']) {
+        case 'paid':
+          $context = array(
+            'revision' => 'formatted-original',
+            'type' => 'amount',
+          );
+          $options = array(
+            'sign' => FALSE,
+          );
+
+          $comment = t('GoCardless resource ID: @id', array('@id' => $bill['id']));
+
+          uc_payment_enter($order_id, 'gocardless', $bill['amount'], $order->uid, NULL, $comment);
+          uc_cart_complete_sale($order);
+          uc_order_update_status($order_id, 'completed');
+          uc_order_comment_save($order_id, 0, t('GoCardless reported a payment of @amount @currency.', array('@amount' => uc_price($bill['amount'], $context, $options), '@currency' => $order->currency)));
+          break;
+        case 'failed':
+          $message = t('GoCardless bill could not be debited from the customer account');
+          uc_order_comment_save($order_id, 0, $message, 'order', 'canceled');
+          uc_order_update_status($order_id, 'canceled');
+          break;
+        case 'refunded':
+          uc_order_comment_save($order_id, 0, t('Order refunded via GoCardless.'), 'order', 'canceled');
+          uc_order_update_status($order_id, 'canceled');
+          break;
       }
     }
 
