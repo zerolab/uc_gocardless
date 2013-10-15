@@ -31,7 +31,7 @@ function uc_gocardless_requirements($phase) {
  * Implements hook_install()
  */
 function uc_gocardless_install() {
-  drupal_install_schema('uc_order_gocardless');
+  drupal_install_schema('uc_gocardless');
 }
 
 /**
@@ -40,7 +40,7 @@ function uc_gocardless_install() {
  * Uninstalls all variables set by the uc_gocardless module.
  */
 function uc_gocardless_uninstall() {
-  drupal_uninstall_schema('uc_order_gocardless');
+  drupal_uninstall_schema('uc_gocardless');
 
   // Delete related variables all at once.
   db_query("DELETE FROM {variable} WHERE name LIKE 'uc_gocardless_%%'");
@@ -68,6 +68,9 @@ function uc_gocardless_schema() {
         'not null' => TRUE,
         'default' => ''
       )
+    ),
+    'indexes' => array(
+      'resource_id' => array('resource_id')
     ),
     'primary_key' => array('order_id')
   );
