@@ -8,7 +8,7 @@
 /**
  *  Redirect callback
  */
-function uc_gocardless_redirect($order_id, $cart_id) {
+function uc_gocardless_complete($order) {
   uc_gocardless_initialize_library();
 
   $confirm_params = array(

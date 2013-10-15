@@ -9,10 +9,10 @@ function uc_gocardless_menu() {
   $items = array();
 
  //Redirect
-  $items['gocardless/redirect'] = array(
-    'title' => 'GoCardless redirect',
-    'page callback' => 'uc_gocardless_redirect',
-    'page arguments' => array(3),
+  $items['gocardless/complete/%uc_order'] = array(
+    'title' => 'GoCardless payment complete',
+    'page callback' => 'uc_gocardless_complete',
+    'page arguments' => array(2),
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
     'file' => 'uc_gocardless.pages.inc',
@@ -192,6 +192,7 @@ function uc_gocardless_form($form_state, $order) {
       'billing_postcode'  => $order->billing_postal_code,
     ),
     'state' => $order->order_id,
+    'redirect_uri' => url('gocardless/complete/'. $order->order_id, array('absolute' => TRUE)),
   );
 
   $url = GoCardless::new_bill_url($payment_details);
