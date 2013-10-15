@@ -63,7 +63,7 @@ function uc_gocardless_webhook() {
       // Get the order id based on bill resource id
       $order_id = db_result(db_query("SELECT order_id FROM {uc_order_gocardless} WHERE resource_id = '%s' ", $bill['id']));
       if (!$order_id || !($order = uc_order_load($order_id)) ) {
-        // watchdog
+        watchdog('uc_gocardless', t('Could not find the corresponding order for GoCardless id: @id', array('@id' => $bill['id'])));
         continue;
       }
 
