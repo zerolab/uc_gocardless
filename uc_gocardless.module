@@ -83,38 +83,6 @@ function uc_gocardless_payment_method() {
 function uc_payment_method_gocardless($op, &$order) {
   switch ($op) {
     case 'settings':
-      $form['uc_gocardless_settings']['uc_gocardless_sandbox'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Enable Sandbox'),
-        '#description' => 'Sandbox: GoCardless will use the sandbox API keys to process the transaction.',
-        '#default_value' => variable_get('uc_gocardless_sandbox', TRUE),
-      );
-
-      $form['live_details'] = array (
-        '#value' => variable_get('live_details', t('<strong>Live API keys</strong>')),
-      );
-
-      $form['uc_gocardless_app_id'] = array(
-        '#type' => 'textfield',
-        '#title' => t('App identifier'),
-        '#description' => t('Your app identifier'),
-        '#default_value' => variable_get('uc_gocardless_app_id', ''),
-      );
-
-       $form['uc_gocardless_app_secret'] = array(
-        '#type' => 'textfield',
-        '#title' => t('App secret'),
-        '#description' => t('Your app secret'),
-        '#default_value' => variable_get('uc_gocardless_app_secret', ''),
-      );
-
-      $form['uc_gocardless_merchant_token'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Merchant access token'),
-        '#description' => t('Your merchant access token'),
-        '#default_value' => variable_get('uc_gocardless_merchant_token', ''),
-      );
-
       $form['uc_gocardless_merchant_id'] = array(
         '#type' => 'textfield',
         '#title' => t('Merchant ID'),
@@ -122,25 +90,64 @@ function uc_payment_method_gocardless($op, &$order) {
         '#default_value' => variable_get('uc_gocardless_merchant_id', ''),
       );
 
-      $form['sandbox_details'] = array (
-        '#value' => variable_get('sandbox_details', t('<strong>Sandbox API keys</strong>')),
+      $form['uc_gocardless_live'] = array (
+        '#type' => 'fieldset',
+        '#title' => t('Live API keys'),
       );
 
-      $form['uc_gocardless_sandbox_app_id'] = array(
+      $form['uc_gocardless_live']['uc_gocardless_app_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('App identifier'),
+        '#description' => t('Your app identifier'),
+        '#default_value' => variable_get('uc_gocardless_app_id', ''),
+      );
+
+       $form['uc_gocardless_live']['uc_gocardless_app_secret'] = array(
+        '#type' => 'textfield',
+        '#title' => t('App secret'),
+        '#description' => t('Your app secret'),
+        '#default_value' => variable_get('uc_gocardless_app_secret', ''),
+      );
+
+      $form['uc_gocardless_live']['uc_gocardless_merchant_token'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Merchant access token'),
+        '#description' => t('Your merchant access token'),
+        '#default_value' => variable_get('uc_gocardless_merchant_token', ''),
+      );
+
+      $use_sandbox = (bool) variable_get('uc_gocardless_sandbox', TRUE);
+
+      $form['uc_gocardless_settings']['uc_gocardless_sandbox'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Enable Sandbox'),
+        '#description' => 'Sandbox: GoCardless will use the sandbox API keys to process the transaction.',
+        '#default_value' => $use_sandbox,
+      );
+
+      $form['uc_gocardless_sandbox'] = array (
+        '#type' => 'fieldset',
+        '#title' => t('Sandbox API keys'),
+        '#collapsible' => TRUE,
+        '#collapsed' => !$use_sandbox,
+        '#attributes' => array('class' => 'gocardless-sandbox')
+      );
+
+      $form['uc_gocardless_sandbox']['uc_gocardless_sandbox_app_id'] = array(
         '#type' => 'textfield',
         '#title' => t('Sandbox app identifier'),
         '#description' => t('Your sandbox app identifier'),
         '#default_value' => variable_get('uc_gocardless_sandbox_app_id', ''),
       );
 
-       $form['uc_gocardless_sandbox_app_secret'] = array(
+      $form['uc_gocardless_sandbox']['uc_gocardless_sandbox_app_secret'] = array(
         '#type' => 'textfield',
         '#title' => t('Sandbox app secret'),
         '#description' => t('Your sandbox app secret'),
         '#default_value' => variable_get('uc_gocardless_sandbox_app_secret', ''),
       );
 
-      $form['uc_gocardless_sandbox_merchant_token'] = array(
+      $form['uc_gocardless_sandbox']['uc_gocardless_sandbox_merchant_token'] = array(
         '#type' => 'textfield',
         '#title' => t('Sandbox merchant access token'),
         '#description' => t('Your sandbox merchant access token'),
@@ -153,6 +160,8 @@ function uc_payment_method_gocardless($op, &$order) {
         '#description' => t('Customize the label of the final checkout button when the customer is about to pay.'),
         '#default_value' => variable_get('my_custom_checkout_label', ''),
       );
+
+      drupal_add_js(drupal_get_path('module', 'uc_gocardless') .'/uc_gocardless.admin.js');
 
     return $form;
   }
