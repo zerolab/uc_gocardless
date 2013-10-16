@@ -154,11 +154,11 @@ function uc_payment_method_gocardless($op, &$order) {
         '#default_value' => variable_get('uc_gocardless_sandbox_merchant_token', ''),
       );
 
-      $form['my_custom_checkout_label'] = array(
+      $form['uc_gocardless_submit_label'] = array(
         '#type' => 'textfield',
         '#title' => t('Checkout button label'),
         '#description' => t('Customize the label of the final checkout button when the customer is about to pay.'),
-        '#default_value' => variable_get('my_custom_checkout_label', ''),
+        '#default_value' => variable_get('uc_gocardless_submit_label', t('Submit Order')),
       );
 
       drupal_add_js(drupal_get_path('module', 'uc_gocardless') .'/uc_gocardless.admin.js');
@@ -186,10 +186,16 @@ function uc_gocardless_form($form_state, $order) {
     'redirect_uri' => url('gocardless/complete/'. $order->order_id, array('absolute' => TRUE)),
   );
 
-  $url = GoCardless::new_bill_url($payment_details);
+  $bill_url = GoCardless::new_bill_url($payment_details);
+  $submit_label = variable_get('uc_gocardless_submit_label', t('Submit Order'));
+  if (empty($submit_label)) {
+    $submit_label = t('Submit Order');
+  }
+
+  $options = array('external' => TRUE, 'attributes' => array('class' => 'gocardless-submit'));
 
   $form['gocardless_link'] = array (
-    '#value' => variable_get('gocardless_pay_link', t('<a href="'.$url.'" class="gocardless-submit">Submit order</a>')),
+    '#value' => l($submit_label, $bill_url, $options),
   );
 
   return $form;
